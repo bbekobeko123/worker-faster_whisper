@@ -50,7 +50,7 @@ def run_whisper_job(job):
     '''
     def _progress(pct: int):
     # This makes % appear while you poll /status
-    progress_update(job, {"progress": f"{pct}%"})
+        progress_update(job, {"progress": f"{pct}%"})
 
     job_input = job['input']
 
@@ -95,7 +95,7 @@ def run_whisper_job(job):
             logprob_threshold=job_input["logprob_threshold"],
             no_speech_threshold=job_input["no_speech_threshold"],
             enable_vad=job_input["enable_vad"],
-            word_timestamps=job_input["word_timestamps"]
+            word_timestamps=job_input["word_timestamps"],
             progress_cb=_progress
         )
 
