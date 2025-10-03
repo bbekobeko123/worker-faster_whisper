@@ -65,6 +65,7 @@ class Predictor:
         no_speech_threshold=0.6,
         enable_vad=False,
         word_timestamps=False,
+        progress_cb=None,
     ):
         """
         Run a single prediction on the model, loading/unloading models as needed.
@@ -132,32 +133,45 @@ class Predictor:
         # Note: FasterWhisper's transcribe might release the GIL, potentially allowing
         # other threads to acquire the model_lock if transcribe is lengthy.
         # If issues arise, the lock might need to encompass the transcribe call too.
-        segments, info = list(
-            model.transcribe(
-                str(audio),
-                language=language,
-                task="transcribe",
-                beam_size=beam_size,
-                best_of=best_of,
-                patience=patience,
-                length_penalty=length_penalty,
-                temperature=temperature,
-                compression_ratio_threshold=compression_ratio_threshold,
-                log_prob_threshold=logprob_threshold,
-                no_speech_threshold=no_speech_threshold,
-                condition_on_previous_text=condition_on_previous_text,
-                initial_prompt=initial_prompt,
-                prefix=None,
-                suppress_blank=True,
-                suppress_tokens=[-1],  # Might need conversion from string
-                without_timestamps=False,
-                max_initial_timestamp=1.0,
-                word_timestamps=word_timestamps,
-                vad_filter=enable_vad,
-            )
-        )
+       # Get generator + info (do NOT wrap in list here!)
+segments_gen, info = model.transcribe(
+    str(audio),
+    language=language,
+    task="transcribe",
+    beam_size=beam_size,
+    best_of=best_of,
+    patience=patience,
+    length_penalty=length_penalty,
+    temperature=temperature,
+    compression_ratio_threshold=compression_ratio_threshold,
+    log_prob_threshold=logprob_threshold,
+    no_speech_threshold=no_speech_threshold,
+    condition_on_previous_text=condition_on_previous_text,
+    initial_prompt=initial_prompt,
+    prefix=None,
+    suppress_blank=True,
+    suppress_tokens=[-1],
+    without_timestamps=False,
+    max_initial_timestamp=1.0,
+    word_timestamps=word_timestamps,
+    vad_filter=enable_vad,
+)
 
-        segments = list(segments)
+# Stream segments and report % as we go
+total = float(getattr(info, "duration", 0.0) or 0.0)
+collected = []
+last_pct = -1
+
+for seg in segments_gen:
+    collected.append(seg)
+    if progress_cb and total > 0:
+        pct = int(min(100, max(0, seg.end * 100.0 / total)))
+        if pct != last_pct:
+            progress_cb(pct)     # <--- call your callback with NN%
+            last_pct = pct
+
+segments = collected
+
 
         # Format transcription
         transcription_output = format_segments(transcription, segments)
@@ -265,5 +279,7 @@ def write_srt(transcript):
         result += f"{format_timestamp(segment.end, always_include_hours=True, decimal_marker=',')}\n"
         result += f"{segment.text.strip().replace('-->', '->')}\n"
         result += "\n"
+    if progress_cb:
+    progress_cb(100)  # make sure it ends at 100%
 
     return result
