@@ -34,9 +34,9 @@ RUN apt-get update -y && \
 # Install Python dependencies
 COPY builder/requirements.txt /requirements.txt
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip && \
-    pip install huggingface_hub[hf_xet] && \
-    pip install -r /requirements.txt --no-cache-dir
+    python3 -m pip install --upgrade pip && \
+    python3 -m pip install --no-cache-dir "huggingface_hub==0.24.6" && \
+    python3 -m pip install --no-cache-dir -r /requirements.txt
 
 # Copy and run script to fetch models
 COPY builder/fetch_models.py /fetch_models.py
