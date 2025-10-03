@@ -5,6 +5,8 @@ rp_debugger:
 - Utility that provides additional debugging information.
 The handler must be called with --rp_debugger flag to enable it.
 """
+from runpod.serverless import progress_update
+
 import base64
 import tempfile
 
@@ -46,6 +48,10 @@ def run_whisper_job(job):
     Returns:
     dict: The result of the prediction
     '''
+    def _progress(pct: int):
+    # This makes % appear while you poll /status
+    progress_update(job, {"progress": f"{pct}%"})
+
     job_input = job['input']
 
     with rp_debugger.LineTimer('validation_step'):
@@ -90,6 +96,7 @@ def run_whisper_job(job):
             no_speech_threshold=job_input["no_speech_threshold"],
             enable_vad=job_input["enable_vad"],
             word_timestamps=job_input["word_timestamps"]
+            progress_cb=_progress
         )
 
     with rp_debugger.LineTimer('cleanup_step'):
