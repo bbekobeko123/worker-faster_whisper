@@ -38,9 +38,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m pip install --no-cache-dir "huggingface_hub==0.24.6" && \
     python3 -m pip install --no-cache-dir -r /requirements.txt
 
-# Copy and run script to fetch models
-COPY builder/fetch_models.py /fetch_models.py
-RUN python /fetch_models.py && \
+
     rm /fetch_models.py
 
 # Copy handler and other code
