@@ -200,15 +200,14 @@ segments = collected
         if word_timestamps:
             word_timestamps_list = []
             for segment in segments:
-                for word in segment.words:
-                    word_timestamps_list.append(
-                        {
-                            "word": word.word,
-                            "start": word.start,
-                            "end": word.end,
-                        }
-                    )
+                for word in getattr(segment, "words", []) or []:
+                    word_timestamps_list.append({
+                        "word": word.word,
+                        "start": word.start,
+                        "end": word.end,
+                    })
             results["word_timestamps"] = word_timestamps_list
+
 
         return results
 
@@ -279,7 +278,5 @@ def write_srt(transcript):
         result += f"{format_timestamp(segment.end, always_include_hours=True, decimal_marker=',')}\n"
         result += f"{segment.text.strip().replace('-->', '->')}\n"
         result += "\n"
-    if progress_cb:
-    progress_cb(100)  # make sure it ends at 100%
-
+    
     return result
