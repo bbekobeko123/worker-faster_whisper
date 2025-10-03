@@ -37,6 +37,18 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m pip install --upgrade pip && \
     python3 -m pip install --no-cache-dir "huggingface_hub==0.24.6" && \
     python3 -m pip install --no-cache-dir -r /requirements.txt
+    # --- Optional: prefetch ONLY chosen models at build time ---
+# Pass a build arg PRELOAD_MODELS="turbo,distil-large-v3" to enable; leave empty to skip.
+ARG PRELOAD_MODELS=""
+ENV PRELOAD_MODELS=${PRELOAD_MODELS}
+
+# Build-time cache location (runtime can override with env HF_HOME)
+ENV HF_HOME=/root/.cache/huggingface
+
+COPY builder/fetch_models.py /fetch_models.py
+RUN python3 /fetch_models.py && rm /fetch_models.py
+# --- End optional prefetch ---
+
 
 
 # Copy handler and other code
