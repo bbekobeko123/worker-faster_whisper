@@ -267,16 +267,11 @@ def write_vtt(transcript):
 
 
 def write_srt(transcript):
-    """
-    Write the transcript in SRT format.
-    """
     result = ""
-
     for i, segment in enumerate(transcript, start=1):
         result += f"{i}\n"
         result += f"{format_timestamp(segment.start, always_include_hours=True, decimal_marker=',')} --> "
         result += f"{format_timestamp(segment.end, always_include_hours=True, decimal_marker=',')}\n"
-        result += f"{segment.text.strip().replace('-->', '->')}\n"
-        result += "\n"
-    
+        result += f"{segment.text.strip().replace('-->', '->')}\n\n"
     return result
+
