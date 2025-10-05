@@ -106,3 +106,4 @@ def run_whisper_job(job):
 
 
 runpod.serverless.start({"handler": run_whisper_job})
+ 
