@@ -163,6 +163,10 @@ class Predictor:
         total = float(getattr(info, "duration", 0.0) or 0.0)
         last_pct = -1
 
+        if progress_cb:
+            progress_cb(0)
+            last_pct = 0
+
         for seg in segments_gen:
             segments.append(seg)
             if progress_cb and total > 0:
