@@ -123,6 +123,10 @@ class Predictor:
         # Consider if transcribe is thread-safe or if it should also be within the lock
         # For now, keeping transcribe outside as it's CPU/GPU bound work
 
+        # Note: FasterWhisper's transcribe might release the GIL, potentially allowing
+        # other threads to acquire the model_lock if transcribe is lengthy.
+        # If issues arise, the lock might need to encompass the transcribe call too.
+
         if temperature_increment_on_fallback is not None:
             temperature = tuple(
                 np.arange(temperature, 1.0 + 1e-6, temperature_increment_on_fallback)
@@ -130,48 +134,45 @@ class Predictor:
         else:
             temperature = [temperature]
 
-        # Note: FasterWhisper's transcribe might release the GIL, potentially allowing
-        # other threads to acquire the model_lock if transcribe is lengthy.
-        # If issues arise, the lock might need to encompass the transcribe call too.
-       # Get generator + info (do NOT wrap in list here!)
-segments_gen, info = model.transcribe(
-    str(audio),
-    language=language,
-    task="transcribe",
-    beam_size=beam_size,
-    best_of=best_of,
-    patience=patience,
-    length_penalty=length_penalty,
-    temperature=temperature,
-    compression_ratio_threshold=compression_ratio_threshold,
-    log_prob_threshold=logprob_threshold,
-    no_speech_threshold=no_speech_threshold,
-    condition_on_previous_text=condition_on_previous_text,
-    initial_prompt=initial_prompt,
-    prefix=None,
-    suppress_blank=True,
-    suppress_tokens=[-1],
-    without_timestamps=False,
-    max_initial_timestamp=1.0,
-    word_timestamps=word_timestamps,
-    vad_filter=enable_vad,
-)
+        # Get generator + info (do NOT wrap in list here!)
+        segments_gen, info = model.transcribe(
+            str(audio),
+            language=language,
+            task="transcribe",
+            beam_size=beam_size,
+            best_of=best_of,
+            patience=patience,
+            length_penalty=length_penalty,
+            temperature=temperature,
+            compression_ratio_threshold=compression_ratio_threshold,
+            log_prob_threshold=logprob_threshold,
+            no_speech_threshold=no_speech_threshold,
+            condition_on_previous_text=condition_on_previous_text,
+            initial_prompt=initial_prompt,
+            prefix=None,
+            suppress_blank=True,
+            suppress_tokens=[-1],
+            without_timestamps=False,
+            max_initial_timestamp=1.0,
+            word_timestamps=word_timestamps,
+            vad_filter=enable_vad,
+        )
 
-# Stream segments and report % as we go
-total = float(getattr(info, "duration", 0.0) or 0.0)
-collected = []
-last_pct = -1
+        # Stream segments and report % as we go
+        segments = []
+        total = float(getattr(info, "duration", 0.0) or 0.0)
+        last_pct = -1
 
-for seg in segments_gen:
-    collected.append(seg)
-    if progress_cb and total > 0:
-        pct = int(min(100, max(0, seg.end * 100.0 / total)))
-        if pct != last_pct:
-            progress_cb(pct)     # <--- call your callback with NN%
-            last_pct = pct
+        for seg in segments_gen:
+            segments.append(seg)
+            if progress_cb and total > 0:
+                pct = int(min(100, max(0, (seg.end or 0.0) * 100.0 / total)))
+                if pct != last_pct:
+                    progress_cb(pct)
+                    last_pct = pct
 
-segments = collected
-
+        if progress_cb and last_pct < 100:
+            progress_cb(100)
 
         # Format transcription
         transcription_output = format_segments(transcription, segments)
@@ -182,11 +183,9 @@ segments = collected
             translation_segments, _ = model.transcribe(
                 str(audio),
                 task="translate",
-                temperature=temperature,  # Reuse temperature settings for translation
+                temperature=temperature,
             )
-            translation_output = format_segments(
-                translation, list(translation_segments)
-            )
+            translation_output = format_segments(translation, list(translation_segments))
 
         results = {
             "segments": serialize_segments(segments),
@@ -200,17 +199,11 @@ segments = collected
         if word_timestamps:
             word_timestamps_list = []
             for segment in segments:
-                for word in getattr(segment, "words", []) or []:
-                    word_timestamps_list.append({
-                        "word": word.word,
-                        "start": word.start,
-                        "end": word.end,
-                    })
+                for w in getattr(segment, "words", []) or []:
+                    word_timestamps_list.append({"word": w.word, "start": w.start, "end": w.end})
             results["word_timestamps"] = word_timestamps_list
 
-
         return results
-
 
 def serialize_segments(transcript):
     """
@@ -274,4 +267,3 @@ def write_srt(transcript):
         result += f"{format_timestamp(segment.end, always_include_hours=True, decimal_marker=',')}\n"
         result += f"{segment.text.strip().replace('-->', '->')}\n\n"
     return result
-
