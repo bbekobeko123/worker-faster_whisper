@@ -1,4 +1,6 @@
-import os, sys
+import os
+import sys
+
 from huggingface_hub import snapshot_download
 
 # Map Whisper names to their HF repos used by faster-whisper
@@ -33,4 +35,4 @@ for name in wanted:
         continue
     print(f"Downloading {name} -> {repo} ...")
     snapshot_download(repo_id=repo, cache_dir=cache_dir, local_files_only=False)
-    print(f"✓ {name} done")
+    print(f"{name} done")
