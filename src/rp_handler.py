@@ -50,7 +50,11 @@ def run_whisper_job(job):
     '''
     def _progress(pct: int):
         # This makes % appear while you poll /status
-        progress_update(job, {"progress": f"{pct}%"})
+        payload = {"progress": f"{pct}%"}
+        try:
+            progress_update(job, payload)
+        finally:
+            print(f"[progress] {pct}%", flush=True)
 
     job_input = job['input']
 
@@ -106,4 +110,3 @@ def run_whisper_job(job):
 
 
 runpod.serverless.start({"handler": run_whisper_job})
- 
