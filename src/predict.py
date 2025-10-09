@@ -51,20 +51,21 @@ class Predictor:
         translate=False,
         translation="plain_text",  # Added in a previous PR
         language=None,
-        temperature=0.0,
+        temperature=(0.0, 0.2, 0.4),
         best_of=5,
         beam_size=10,
-        patience=1,
+        patience=2.0,
         length_penalty=None,
         suppress_tokens="-1",
         initial_prompt=None,
         condition_on_previous_text=False,
         temperature_increment_on_fallback=0.2,
         compression_ratio_threshold=2.4,
-        logprob_threshold=-1.0,
-        no_speech_threshold=0.3,
-        enable_vad=True,
+        logprob_threshold=None,
+        no_speech_threshold=1.0,
+        enable_vad=False,
         word_timestamps=True,
+        chunk_length=15,
         progress_cb=None,
     ):
         """
@@ -127,12 +128,19 @@ class Predictor:
         # other threads to acquire the model_lock if transcribe is lengthy.
         # If issues arise, the lock might need to encompass the transcribe call too.
 
-        if temperature_increment_on_fallback is not None:
-            temperature = tuple(
-                np.arange(temperature, 1.0 + 1e-6, temperature_increment_on_fallback)
-            )
+        if isinstance(temperature, (list, tuple)):
+            temperature_values = [float(t) for t in temperature]
+        elif temperature is None:
+            temperature_values = [0.0]
+        elif temperature_increment_on_fallback is not None:
+            fallback_steps = 3
+            temperature_values = [
+                min(1.0, float(temperature + i * temperature_increment_on_fallback))
+                for i in range(fallback_steps)
+            ]
         else:
-            temperature = [temperature]
+            temperature_values = [float(temperature)]
+        temperature_values = tuple(dict.fromkeys(temperature_values))
 
         # Get generator + info (do NOT wrap in list here!)
         segments_gen, info = model.transcribe(
@@ -143,7 +151,7 @@ class Predictor:
             best_of=best_of,
             patience=patience,
             length_penalty=length_penalty,
-            temperature=temperature,
+            temperature=temperature_values,
             compression_ratio_threshold=compression_ratio_threshold,
             log_prob_threshold=logprob_threshold,
             no_speech_threshold=no_speech_threshold,
@@ -156,6 +164,7 @@ class Predictor:
             max_initial_timestamp=1.0,
             word_timestamps=word_timestamps,
             vad_filter=enable_vad,
+            chunk_length=chunk_length,
         )
 
         # Stream segments and report % as we go
@@ -187,7 +196,23 @@ class Predictor:
             translation_segments, _ = model.transcribe(
                 str(audio),
                 task="translate",
-                temperature=temperature,
+                temperature=temperature_values,
+                beam_size=beam_size,
+                patience=patience,
+                length_penalty=length_penalty,
+                compression_ratio_threshold=compression_ratio_threshold,
+                log_prob_threshold=logprob_threshold,
+                no_speech_threshold=no_speech_threshold,
+                condition_on_previous_text=condition_on_previous_text,
+                initial_prompt=initial_prompt,
+                prefix=None,
+                suppress_blank=True,
+                suppress_tokens=[-1],
+                without_timestamps=False,
+                max_initial_timestamp=1.0,
+                word_timestamps=word_timestamps,
+                vad_filter=enable_vad,
+                chunk_length=chunk_length,
             )
             translation_output = format_segments(translation, list(translation_segments))
 

@@ -4,14 +4,18 @@
     "model": "turbo",
     "transcription": "plain text",
     "translate": false,
-    "temperature": 0,
+    "temperature": [0.0, 0.2, 0.4],
     "best_of": 5,
-    "beam_size": 5,
+    "beam_size": 10,
+    "patience": 2.0,
     "suppress_tokens": "-1",
     "condition_on_previous_text": false,
     "temperature_increment_on_fallback": 0.2,
     "compression_ratio_threshold": 2.4,
-    "logprob_threshold": -1,
-    "no_speech_threshold": 0.6
+    "logprob_threshold": null,
+    "no_speech_threshold": 1.0,
+    "enable_vad": false,
+    "word_timestamps": true,
+    "chunk_length": 15.0
   }
 }

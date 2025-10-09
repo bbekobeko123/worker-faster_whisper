@@ -35,9 +35,9 @@ INPUT_VALIDATIONS = {
         'default': None
     },
     'temperature': {
-        'type': float,
+        'type': (float, list, tuple),
         'required': False,
-        'default': 0
+        'default': [0.0, 0.2, 0.4]
     },
     'best_of': {
         'type': int,
@@ -47,12 +47,12 @@ INPUT_VALIDATIONS = {
     'beam_size': {
         'type': int,
         'required': False,
-        'default': 5
+        'default': 10
     },
     'patience': {
         'type': float,
         'required': False,
-        'default': 1.0
+        'default': 2.0
     },
     'length_penalty': {
         'type': float,
@@ -72,7 +72,7 @@ INPUT_VALIDATIONS = {
     'condition_on_previous_text': {
         'type': bool,
         'required': False,
-        'default': True
+        'default': False
     },
     'temperature_increment_on_fallback': {
         'type': float,
@@ -85,14 +85,14 @@ INPUT_VALIDATIONS = {
         'default': 2.4
     },
     'logprob_threshold': {
-        'type': float,
+        'type': (float, type(None)),
         'required': False,
-        'default': -1.0
+        'default': None
     },
     'no_speech_threshold': {
         'type': float,
         'required': False,
-        'default': 0.6
+        'default': 1.0
     },
     'enable_vad': {
         'type': bool,
@@ -102,6 +102,11 @@ INPUT_VALIDATIONS = {
     'word_timestamps': {
         'type': bool,
         'required': False,
-        'default': False
+        'default': True
+    },
+    'chunk_length': {
+        'type': float,
+        'required': False,
+        'default': 15.0
     },
 }
